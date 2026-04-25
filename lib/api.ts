@@ -51,7 +51,9 @@ function formatDate(value: string | Date) {
 }
 
 function normalizeToSupabaseEmail(identifier: string) {
-  const value = String(identifier || "").trim().toLowerCase();
+  const value = String(identifier || "")
+    .trim()
+    .toLowerCase();
   if (!value) return "";
   if (value.includes("@")) return value;
   return `${value}@pos.local`;

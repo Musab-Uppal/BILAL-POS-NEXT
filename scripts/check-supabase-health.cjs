@@ -7,8 +7,6 @@ dotenv.config({ path: path.join(process.cwd(), ".env") });
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminIdentifier = process.env.USERNAME;
-const adminPassword = process.env.PASSWORD;
 
 if (!url || !anonKey || !serviceRoleKey) {
   throw new Error(
@@ -32,6 +30,46 @@ const requiredTables = [
   "receipts",
   "receipt_items",
 ];
+
+function getAdminCredentials() {
+  const raw = [
+    {
+      username: process.env.ADMIN_USERNAME,
+      password: process.env.ADMIN_PASSWORD,
+    },
+    {
+      username: process.env.USERNAME,
+      password: process.env.PASSWORD,
+    },
+    {
+      username: process.env.USER1NAME,
+      password: process.env.USER1PASSWORD,
+    },
+    {
+      username: process.env.USER2NAME,
+      password: process.env.USER2PASSWORD,
+    },
+  ];
+
+  const normalized = raw
+    .map((pair) => ({
+      username: String(pair.username || "")
+        .trim()
+        .toLowerCase(),
+      password: String(pair.password || ""),
+    }))
+    .filter((pair) => pair.username && pair.password);
+
+  const unique = [];
+  const seen = new Set();
+  for (const cred of normalized) {
+    if (seen.has(cred.username)) continue;
+    seen.add(cred.username);
+    unique.push(cred);
+  }
+
+  return unique;
+}
 
 function maskEmail(email) {
   if (!email) return "(not found)";
@@ -97,7 +135,7 @@ async function checkRlsBlocksAnonymous() {
   };
 }
 
-async function resolveAdminEmail() {
+async function resolveAdminEmail(adminIdentifier) {
   if (!adminIdentifier) return null;
 
   const normalized = adminIdentifier.trim().toLowerCase();
@@ -130,37 +168,46 @@ async function resolveAdminEmail() {
 }
 
 async function checkAdminCredentials() {
-  if (!adminIdentifier || !adminPassword) {
+  const creds = getAdminCredentials();
+
+  if (creds.length === 0) {
     return {
       ok: false,
-      detail: "USERNAME or PASSWORD missing in .env",
-      adminEmail: null,
+      detail:
+        "No admin credentials found in .env (expected USER1NAME/USER1PASSWORD, USER2NAME/USER2PASSWORD, USERNAME/PASSWORD, or ADMIN_USERNAME/ADMIN_PASSWORD)",
+      accounts: [],
     };
   }
 
-  const adminEmail = await resolveAdminEmail();
-  if (!adminEmail) {
-    return {
-      ok: false,
-      detail: "Could not map USERNAME to a Supabase auth user",
-      adminEmail: null,
-    };
+  const accountResults = [];
+
+  for (const cred of creds) {
+    const adminEmail = await resolveAdminEmail(cred.username);
+    const { error } = await anon.auth.signInWithPassword({
+      email: adminEmail,
+      password: cred.password,
+    });
+
+    if (!error) {
+      await anon.auth.signOut();
+    }
+
+    accountResults.push({
+      username: cred.username,
+      adminEmail,
+      ok: !error,
+      detail: error ? error.message : "Login is valid",
+    });
   }
 
-  const { error } = await anon.auth.signInWithPassword({
-    email: adminEmail,
-    password: adminPassword,
-  });
-
-  // Clean up test session if login succeeded.
-  if (!error) {
-    await anon.auth.signOut();
-  }
+  const ok = accountResults.every((acc) => acc.ok);
 
   return {
-    ok: !error,
-    detail: error ? error.message : "Admin credentials login is valid",
-    adminEmail,
+    ok,
+    detail: ok
+      ? "All configured admin credentials are valid"
+      : "One or more configured admin credentials are invalid",
+    accounts: accountResults,
   };
 }
 
@@ -184,8 +231,14 @@ async function main() {
   );
   console.log(`RLS anonymous block: ${rls.ok ? "OK" : `FAIL (${rls.detail})`}`);
   console.log(
-    `Admin credential check: ${admin.ok ? "OK" : `FAIL (${admin.detail})`} (${maskEmail(admin.adminEmail)})`,
+    `Admin credential check: ${admin.ok ? "OK" : `FAIL (${admin.detail})`}`,
   );
+
+  for (const account of admin.accounts || []) {
+    console.log(
+      `  - ${account.username}: ${account.ok ? "OK" : `FAIL (${account.detail})`} (${maskEmail(account.adminEmail)})`,
+    );
+  }
 
   const allTablesOk = tables.every((t) => t.ok);
   const allGood = allTablesOk && rpc.ok && rls.ok && admin.ok;

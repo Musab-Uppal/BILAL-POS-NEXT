@@ -1,10 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-function isAdminUser(user: any, adminIdentifier: string | undefined) {
-  if (!user || !adminIdentifier) return false;
+function getAdminIdentifiers() {
+  const raw = [
+    process.env.ADMIN_USERNAME,
+    process.env.USERNAME,
+    process.env.USER1NAME,
+    process.env.USER2NAME,
+  ];
 
-  const normalized = adminIdentifier.trim().toLowerCase();
+  return Array.from(
+    new Set(
+      raw
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean),
+    ),
+  );
+}
+
+function isAdminUser(user: any, adminIdentifiers: string[]) {
+  if (!user || adminIdentifiers.length === 0) return false;
+
   const email = String(user.email || "").toLowerCase();
   const emailLocalPart = email.includes("@") ? email.split("@")[0] : email;
   const metadataUsername = String(
@@ -12,9 +32,9 @@ function isAdminUser(user: any, adminIdentifier: string | undefined) {
   ).toLowerCase();
 
   return (
-    email === normalized ||
-    emailLocalPart === normalized ||
-    metadataUsername === normalized
+    adminIdentifiers.includes(email) ||
+    adminIdentifiers.includes(emailLocalPart) ||
+    adminIdentifiers.includes(metadataUsername)
   );
 }
 
@@ -50,7 +70,7 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isLoginRoute = pathname === "/login";
-  const adminIdentifier = process.env.USERNAME;
+  const adminIdentifiers = getAdminIdentifiers();
 
   if (!user && !isLoginRoute) {
     const url = request.nextUrl.clone();
@@ -59,7 +79,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user) {
-    const isAdmin = isAdminUser(user, adminIdentifier);
+    const isAdmin = isAdminUser(user, adminIdentifiers);
 
     if (!isAdmin) {
       await supabase.auth.signOut();
