@@ -112,13 +112,13 @@ export default function PosPage() {
 
   return (
     <div className="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen">
-      <div className="p-3 sm:p-4">
-        <div className="block sm:flex justify-between items-start mb-4 sm:mb-6">
+      <div className="p-2 sm:p-3">
+        <div className="block sm:flex justify-between items-start mb-3 sm:mb-4">
           <div className="w-full sm:flex-1 text-center mb-4 sm:mb-0">
-            <h1 className="text-white text-2xl sm:text-4xl font-bold mb-1">
+            <h1 className="text-white text-2xl sm:text-3xl font-bold mb-1">
               Point of Sale
             </h1>
-            <div className="text-white/80 text-sm mt-1">
+            <div className="text-white/80 text-xs sm:text-sm mt-1">
               {formatDate(orderDate)}
             </div>
           </div>
@@ -137,7 +137,7 @@ export default function PosPage() {
                     type="date"
                     value={orderDate}
                     onChange={handleDateChange}
-                    className="w-full px-3 py-2.5 rounded-lg border-2 border-white/30 bg-white/95 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent shadow-md transition-all duration-200 hover:bg-white text-sm sm:text-base"
+                    className="w-full px-3 py-2 rounded-lg border-2 border-white/30 bg-white/95 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent shadow-md transition-all duration-200 hover:bg-white text-sm"
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                     <Calendar className="w-4 h-4 text-gray-500" />
@@ -156,7 +156,7 @@ export default function PosPage() {
                   <select
                     value={selectedCustomer}
                     onChange={handleCustomerChange}
-                    className="w-full px-3 py-2.5 rounded-lg border-2 border-white/30 bg-white/95 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent shadow-md transition-all duration-200 hover:bg-white text-sm sm:text-base appearance-none"
+                    className="w-full px-3 py-2 rounded-lg border-2 border-white/30 bg-white/95 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent shadow-md transition-all duration-200 hover:bg-white text-sm appearance-none"
                     disabled={customersLoading}
                     size={getMobileSelectSize()}
                     onFocus={(e) => {
@@ -231,7 +231,7 @@ export default function PosPage() {
         </div>
 
         {currentCustomer && (
-          <div className="hidden sm:block w-full sm:w-auto mb-4">
+          <div className="hidden sm:block w-full sm:w-auto mb-3">
             <div className="w-full sm:w-64 p-3 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30 shadow-md sm:ml-auto">
               <div className="flex items-center justify-between">
                 <div>
@@ -263,7 +263,7 @@ export default function PosPage() {
 
         {currentCustomer && (
           <div className="sm:hidden mb-4">
-            <div className="w-full p-3 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+            <div className="w-full p-2.5 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -292,17 +292,17 @@ export default function PosPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h3 className="text-white text-xl sm:text-2xl font-bold">Products</h3>
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <h3 className="text-white text-lg sm:text-xl font-bold">Products</h3>
           <div className="text-white/80 text-xs sm:text-sm">
             {products.length} products available
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row">
-        <section className="w-full lg:flex-1 px-3 sm:px-4 pb-4 lg:pb-0">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2 sm:gap-3">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-180px)]">
+        <section className="w-full lg:flex-1 px-3 sm:px-4 pb-4 lg:pb-2 lg:overflow-y-auto lg:pr-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2">
             {products.map((p) => (
               <ProductCard
                 key={p.productPriceId}
@@ -314,7 +314,7 @@ export default function PosPage() {
           </div>
         </section>
 
-        <div className="w-full lg:w-[500px] lg:sticky lg:top-0 lg:h-screen">
+        <div className="w-full lg:w-[460px] lg:h-full lg:px-2 lg:pb-2">
           <Cart />
         </div>
       </div>

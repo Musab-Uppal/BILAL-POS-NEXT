@@ -66,7 +66,7 @@ export default function ProductCard({
         type="button"
         aria-label={`Add ${productName} to cart`}
       >
-        <div className="h-28 sm:h-36 bg-gradient-to-br from-purple-100 to-pink-100 relative overflow-hidden">
+        <div className="h-24 sm:h-28 bg-gradient-to-br from-purple-100 to-pink-100 relative overflow-hidden">
           {!imageError ? (
             <img
               src={imageUrl}
@@ -107,15 +107,15 @@ export default function ProductCard({
           </div>
         </div>
 
-        <div className="p-2 sm:p-3">
+        <div className="p-2">
           <h4
-            className="font-bold text-gray-800 text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 h-8 sm:h-10"
+            className="font-bold text-gray-800 text-xs sm:text-sm mb-1 line-clamp-2 h-8"
             title={productName}
           >
             {productName}
           </h4>
 
-          <div className="flex items-center justify-center py-0.5 sm:py-1">
+          <div className="flex items-center justify-center py-0.5">
             <span className="text-xs text-gray-600 font-medium truncate">
               {typeof onAdd === "function"
                 ? "Click to add to cart"

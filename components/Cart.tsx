@@ -268,7 +268,7 @@ export default function Cart() {
 
       <div
         className={`
-        lg:w-full lg:min-h-full lg:bg-linear-to-br lg:from-white lg:to-purple-50 lg:p-4 lg:rounded-2xl lg:shadow-xl lg:border lg:border-purple-200
+        lg:w-full lg:h-full lg:bg-linear-to-br lg:from-white lg:to-purple-50 lg:p-3 lg:rounded-2xl lg:shadow-xl lg:border lg:border-purple-200
         fixed lg:relative top-0 right-0 h-screen w-[90vw] max-w-md bg-white z-50 shadow-2xl transition-transform duration-300
         ${isCartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
       `}
@@ -281,13 +281,13 @@ export default function Cart() {
           <X className="w-5 h-5 text-gray-700" />
         </button>
 
-        <div className="flex items-center justify-between mb-4 pt-12 lg:pt-0 border-b border-gray-100 pb-3">
+        <div className="flex items-center justify-between mb-3 pt-12 lg:pt-0 border-b border-gray-100 pb-2">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-linear-to-br from-purple-600 to-pink-600 rounded-xl shadow">
               <ShoppingCart className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="text-lg text-gray-800 font-bold m-0">Cart</h3>
+              <h3 className="text-base text-gray-800 font-bold m-0">Cart</h3>
               <p className="text-xs text-gray-500 m-0">
                 {cart.length} {cart.length === 1 ? "item" : "items"}
               </p>
@@ -301,13 +301,13 @@ export default function Cart() {
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-500 font-medium">Total</div>
-            <div className="text-lg font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <div className="text-base font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               Rs {grandTotal.toFixed(2)}
             </div>
           </div>
         </div>
 
-        <div className="h-[calc(100vh-320px)] lg:h-[calc(100vh-380px)] overflow-y-auto pr-1 sm:pr-2">
+        <div className="h-[calc(100vh-300px)] lg:h-[calc(100%-255px)] overflow-y-auto pr-1 sm:pr-2 pb-1">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <div className="w-16 h-16 bg-linear-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -321,7 +321,7 @@ export default function Cart() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-0.5">
               {cart.map((it: any) => {
                 const quantity = Number(it.qty) || 0;
                 const factor = Number(it.factor) || 0;
@@ -335,7 +335,7 @@ export default function Cart() {
                 return (
                   <div
                     key={it.productPriceId}
-                    className={`relative p-3 rounded-xl shadow-sm transition-all duration-200 ${
+                    className={`relative p-2 rounded-xl shadow-sm transition-all duration-200 ${
                       hasError
                         ? "bg-linear-to-r from-red-50 to-pink-50 border border-red-300"
                         : "bg-white border border-purple-100 hover:shadow-md hover:border-purple-200"
@@ -360,11 +360,11 @@ export default function Cart() {
                       )}
                     </div>
 
-                    <div className="text-xs font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                    <div className="text-xs font-bold bg-linear-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1.5">
                       Rs {Number(it.price || 0).toFixed(2)}/kg
                     </div>
 
-                    <div className="space-y-1 mb-3">
+                    <div className="space-y-1 mb-2">
                       <div>
                         <label
                           className={`text-[10px] font-bold mb-0.5 block ${
@@ -383,7 +383,7 @@ export default function Cart() {
                           onChange={(e) =>
                             updateQuantity(it.productPriceId, e.target.value)
                           }
-                          className={`w-full p-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          className={`w-full p-1 rounded-lg text-xs font-semibold transition-all ${
                             hasInvalidQuantity
                               ? "border border-red-500 bg-red-50 text-red-700 focus:ring-1 focus:ring-red-200"
                               : "border border-purple-200 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-100"
@@ -413,7 +413,7 @@ export default function Cart() {
                           onChange={(e) =>
                             updateFactor(it.productPriceId, e.target.value)
                           }
-                          className={`w-full p-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          className={`w-full p-1 rounded-lg text-xs font-semibold transition-all ${
                             hasInvalidFactor
                               ? "border border-red-500 bg-red-50 text-red-700 focus:ring-1 focus:ring-red-200"
                               : "border border-purple-200 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-100"
@@ -460,13 +460,13 @@ export default function Cart() {
 
         {cart.length > 0 && (
           <div
-            className={`absolute bottom-0 left-0 right-0 p-3 lg:p-4 rounded-t-xl lg:rounded-b-2xl shadow-lg backdrop-blur-md transition-all duration-200 ${
+            className={`absolute bottom-0 left-0 right-0 p-2.5 lg:p-3 rounded-t-xl lg:rounded-b-2xl shadow-lg backdrop-blur-md transition-all duration-200 ${
               isCheckoutDisabled()
                 ? "bg-linear-to-r from-gray-400 to-gray-500"
                 : "bg-linear-to-r from-purple-600 via-pink-600 to-purple-600"
             }`}
           >
-            <div className="space-y-2 lg:space-y-3">
+            <div className="space-y-2">
               {orderDate && (
                 <div className="flex items-center justify-between p-2 bg-white/10 rounded-lg">
                   <div className="flex items-center gap-2">
@@ -515,7 +515,7 @@ export default function Cart() {
                       min="0"
                       step="0.01"
                       placeholder="0.00"
-                      className="w-full pl-10 pr-3 py-2 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent text-sm"
+                      className="w-full pl-10 pr-3 py-1.5 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent text-sm"
                     />
                   </div>
                   {isPaymentAmountValid() && paymentAmount !== "" && (
