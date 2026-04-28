@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import { getReceiptByOrderId } from "../../lib/api";
+import {
+  buildReportReceiptSnapshot,
+  normalizeReceiptLookupResult,
+} from "../../lib/receipt";
 
 const getPaymentStatusClass = (status) => {
   switch (status?.toLowerCase()) {
@@ -80,38 +84,17 @@ export default function OrderDetailReport({
 
     try {
       const response = await getReceiptByOrderId(orderId);
+      const receipt = normalizeReceiptLookupResult(response.data);
 
-      if (response.data && response.data.length > 0) {
-        const receipt = response.data[0];
+      if (receipt?.id) {
         const receiptUrl = `/receipt?print=true&receiptId=${receipt.id}`;
         window.open(receiptUrl, "_blank", "noopener,noreferrer");
       } else {
-        const receiptPayload = {
-          items: (order.items || []).map((item) => ({
-            name: item?.name || "Product",
-            qty: parseFloat(item?.quantity) || 0,
-            price: parseFloat(item?.price) || 0,
-            factor: 1,
-            lineTotal:
-              parseFloat(item?.total || item?.quantity * item?.price) || 0,
-            productId: item?.id || Math.random().toString(36).substring(2, 11),
-          })),
-          total: parseFloat(order.total || order.amount) || 0,
-          createdAt: order.date || order.order_date || new Date().toISOString(),
-          customer: {
-            name:
-              order.customer_name ||
-              order.client?.name ||
-              customerName ||
-              "Customer",
-            balance: parseFloat(customerBalance) || 0,
-            starting_balance: parseFloat(customerBalance) || 0,
-          },
-          payment_amount: parseFloat(order.payment_amount) || 0,
-          payment_status: order.payment_status || "paid",
-          balance_due: parseFloat(order.balance_due) || 0,
-          saleId: order.id,
-        };
+        const receiptPayload = buildReportReceiptSnapshot({
+          order,
+          customerName,
+          customerBalance: parseFloat(customerBalance) || 0,
+        });
 
         const encodedPayload = btoa(
           encodeURIComponent(JSON.stringify(receiptPayload)),
@@ -121,32 +104,11 @@ export default function OrderDetailReport({
       }
     } catch (error) {
       try {
-        const receiptPayload = {
-          items: (order.items || []).map((item) => ({
-            name: item?.name || "Product",
-            qty: parseFloat(item?.quantity) || 0,
-            price: parseFloat(item?.price) || 0,
-            factor: 1,
-            lineTotal:
-              parseFloat(item?.total || item?.quantity * item?.price) || 0,
-            productId: item?.id || Math.random().toString(36).substring(2, 11),
-          })),
-          total: parseFloat(order.total || order.amount) || 0,
-          createdAt: order.date || order.order_date || new Date().toISOString(),
-          customer: {
-            name:
-              order.customer_name ||
-              order.client?.name ||
-              customerName ||
-              "Customer",
-            balance: parseFloat(customerBalance) || 0,
-            starting_balance: parseFloat(customerBalance) || 0,
-          },
-          payment_amount: parseFloat(order.payment_amount) || 0,
-          payment_status: order.payment_status || "paid",
-          balance_due: parseFloat(order.balance_due) || 0,
-          saleId: order.id,
-        };
+        const receiptPayload = buildReportReceiptSnapshot({
+          order,
+          customerName,
+          customerBalance: parseFloat(customerBalance) || 0,
+        });
 
         const encodedPayload = btoa(
           encodeURIComponent(JSON.stringify(receiptPayload)),

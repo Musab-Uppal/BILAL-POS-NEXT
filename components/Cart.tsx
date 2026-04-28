@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "../lib/api";
+import { buildCheckoutReceiptSnapshot } from "../lib/receipt";
 
 function setNavigationState(state: unknown) {
   if (typeof window !== "undefined") {
@@ -98,6 +99,14 @@ export default function Cart() {
           product: String(it.productId),
           quantity: String(Number(it.qty).toFixed(2)),
           factor: String(Number(it.factor || 1).toFixed(2)),
+          price: String(Number(it.price || 0) * Number(it.factor || 1)),
+          price_per_unit: String(
+            Number(it.price || 0) * Number(it.factor || 1),
+          ),
+          lineTotal: String(
+            Number(it.price || 0) * Number(it.qty || 0) * Number(it.factor || 1),
+          ),
+          name: it.name,
         })),
         customer: String(currentCustomer.id),
         payment_amount: String(parseFloat(paymentAmount || "0").toFixed(2)),
@@ -141,20 +150,26 @@ export default function Cart() {
           qty,
           factor,
           price,
+          price_per_unit: price * factor,
           lineTotal,
         };
       });
 
-      const receiptPayload = {
+      const receiptPayload = buildCheckoutReceiptSnapshot({
         items: itemsPayload,
         total: grandTotal,
         createdAt: new Date().toISOString(),
         orderDate: orderDate || new Date().toISOString().split("T")[0],
         customer: currentCustomer,
-        payment_amount: payment,
-        balance_due,
-        payment_status,
-      };
+        customerName: currentCustomer.name,
+        previousBalance: Number(currentCustomer.balance) || 0,
+        paymentAmount: payment,
+        balanceDue: balance_due,
+        paymentStatus: payment_status,
+        receipt_number: backendOrder?.receipt_number,
+        receipt_id: backendOrder?.receipt_id,
+        order_id: backendOrder?.order_id,
+      });
 
       let successMessage = "";
       switch (payment_status) {

@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getReceipt, reprintReceipt } from "../lib/api";
+import { normalizeReceiptSnapshot } from "../lib/receipt";
 
 export default function ReceiptView({
   initialReceiptId = null,
   searchParamsObj = {},
+  testPayload = null,
 }) {
   const router = useRouter();
 
@@ -23,10 +25,15 @@ export default function ReceiptView({
 
   const [serverResp, setServerResp] = useState(null);
   const [logoError, setLogoError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(testPayload ? false : true);
   const [isReprinting, setIsReprinting] = useState(false);
 
   useEffect(() => {
+    // In test mode, if a testPayload is provided ensure loading is false.
+    if (testPayload) {
+      setLoading(false);
+      return;
+    }
     try {
       const stateRaw = window.sessionStorage.getItem(
         "receipt_navigation_state",
@@ -108,10 +115,25 @@ export default function ReceiptView({
     }
 
     // If no data anywhere, redirect to POS
-    if (!locationPayload && !printData && !receiptId) {
-      router.push("/pos");
-      return;
+    if (!locationPayload && !printData && !receiptId && !checkoutReceiptId) {
+      // Small delay to allow location state to be read from sessionStorage first
+      const timeout = setTimeout(() => {
+        if (!locationPayload && !urlData) {
+          router.push("/pos");
+        }
+      }, 500);
+      return () => clearTimeout(timeout);
     }
+  }, [
+    initialReceiptId,
+    backendResponse,
+    searchParamsObj,
+    locationPayload,
+    router,
+  ]);
+
+  useEffect(() => {
+    if (loading) return;
 
     // Set up print styles
     const style = document.createElement("style");
@@ -281,16 +303,12 @@ export default function ReceiptView({
     `;
     document.head.appendChild(style);
 
-    // Send to backend receipt endpoint (only for new orders from POS)
-    // Receipt is already created by the backend when order was created
-    // Just use the backend response that was passed in location.state
-    if (backendResponse && !urlData && !receiptId) {
-      // Use the backend order response which contains receipt info
+    if (backendResponse && !urlData) {
       setServerResp(backendResponse);
     }
 
-    // Auto-print with delay (only if print=true in URL or from POS)
-    if ((isPrintMode || locationPayload) && !loading) {
+    const isPrintMode = getParam("print") === "true";
+    if ((isPrintMode || locationPayload) && !testPayload) {
       const t = setTimeout(() => {
         try {
           window.print();
@@ -305,18 +323,16 @@ export default function ReceiptView({
         if (s && s.parentNode) s.parentNode.removeChild(s);
       };
     }
-  }, [
-    locationPayload,
-    urlData,
-    loading,
-    backendResponse,
-    initialReceiptId,
-    router,
-    searchParamsObj,
-  ]);
 
-  // Use URL data if available, otherwise use location state
-  const payload = urlData || locationPayload;
+    return () => {
+      const s = document.getElementById("receipt-print-style");
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    };
+  }, [loading, locationPayload, urlData, backendResponse, searchParamsObj]);
+
+  // Use `testPayload` (for tests) first, then URL data, otherwise location state
+  const rawPayload = testPayload || urlData || locationPayload;
+  const payload = rawPayload ? normalizeReceiptSnapshot(rawPayload) : null;
   const receiptId = getParam("receiptId") || initialReceiptId;
   const isFromAPI = receiptId && urlData;
 
@@ -359,61 +375,15 @@ export default function ReceiptView({
     );
   }
 
-  // Handle both old and new data structures
-  const isNewStructure = payload.current_bill_amount !== undefined;
-
-  // Extract data based on structure
-  const items = isNewStructure
-    ? (payload.items || []).map((item) => ({
-        name: item.product_name,
-        qty: item.quantity,
-        price: item.price_per_unit,
-        factor: 1,
-        lineTotal: item.total,
-        productId: item.product_id,
-      }))
-    : payload.items || [];
-
-  const currentBillAmount = isNewStructure
-    ? parseFloat(payload.current_bill_amount) || 0
-    : parseFloat(payload.total) || 0;
-
-  const paymentMade = isNewStructure
-    ? parseFloat(payload.payment_made) || 0
-    : parseFloat(payload.payment_amount) || 0;
-
-  const previousBalance = isNewStructure
-    ? parseFloat(payload.previous_balance) || 0
-    : parseFloat(
-        payload.customer?.starting_balance || payload.customer?.balance || 0,
-      );
-
-  const thisOrderBalanceDue = isNewStructure
-    ? parseFloat(payload.this_bill_balance) || 0
-    : parseFloat(payload.balance_due) || 0;
-
-  const updatedBalance = isNewStructure
-    ? parseFloat(payload.updated_balance) || 0
-    : previousBalance + (currentBillAmount - paymentMade);
-
-  const paymentStatus = isNewStructure
-    ? payload.payment_status
-    : payload.payment_status || "paid";
-
-  const customerName = isNewStructure
-    ? payload.customer_name
-    : payload.customer && typeof payload.customer === "object"
-      ? payload.customer.name
-      : payload.customer;
-
-  // IMPORTANT FIX: Use orderDate from payload if available (for new orders with custom date)
-  const receiptDate = payload.orderDate
-    ? payload.orderDate +
-      "T" +
-      new Date(payload.createdAt).toTimeString().split(" ")[0]
-    : isNewStructure
-      ? payload.receipt_date || payload.createdAt
-      : payload.createdAt;
+  const items = payload.items || [];
+  const currentBillAmount = parseFloat(payload.current_bill_amount) || 0;
+  const paymentMade = parseFloat(payload.payment_made) || 0;
+  const previousBalance = parseFloat(payload.previous_balance) || 0;
+  const thisOrderBalanceDue = parseFloat(payload.this_bill_balance) || 0;
+  const updatedBalance = parseFloat(payload.updated_balance) || 0;
+  const paymentStatus = payload.payment_status || "paid";
+  const customerName = payload.customer_name || payload.customer?.name || payload.customer;
+  const receiptDate = payload.receipt_date || payload.createdAt || payload.orderDate || payload.date;
 
   // Determine if it's a partial or full payment
   const isFullPayment = paymentStatus === "paid";
@@ -591,16 +561,13 @@ export default function ReceiptView({
                       className="py-1.5 text-right align-top"
                       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
                     >
-                      {Number(
-                        (parseFloat(it.price) || 0) *
-                          (parseFloat(it.factor) || 1),
-                      ).toFixed(2)}
+                      {Number(parseFloat(it.rate ?? it.price_per_unit ?? it.price) || 0).toFixed(2)}
                     </td>
                     <td
                       className="py-1.5 text-right align-top font-semibold"
                       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
                     >
-                      {Number(parseFloat(it.lineTotal) || 0).toFixed(2)}
+                      {Number(parseFloat(it.lineTotal ?? it.total) || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -619,15 +586,13 @@ export default function ReceiptView({
               </div>
 
               {/* Previous Balance */}
-              {previousBalance !== 0 && (
-                <div
-                  className="payment-row flex justify-between items-center text-sm md:text-base mt-1"
-                  style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
-                >
-                  <span>PREVIOUS BALANCE:</span>
-                  <span>Rs {previousBalance.toFixed(2)}</span>
-                </div>
-              )}
+              <div
+                className="payment-row flex justify-between items-center text-sm md:text-base mt-1"
+                style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
+              >
+                <span>PREVIOUS BALANCE:</span>
+                <span>Rs {previousBalance.toFixed(2)}</span>
+              </div>
 
               {/* Payment Information */}
               {hasPaymentInfo && (

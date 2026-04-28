@@ -3,6 +3,7 @@
 import { ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "../lib/api";
+import { buildCheckoutReceiptSnapshot } from "../lib/receipt";
 import CartContext from "./CartContext";
 
 function setNavigationState(state: unknown) {
@@ -110,6 +111,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       quantity: Number(it.qty),
       factor: Number(it.factor) || 1,
       price: (Number(it.price) || 0) * (Number(it.factor) || 1),
+      price_per_unit: (Number(it.price) || 0) * (Number(it.factor) || 1),
+      lineTotal:
+        (Number(it.price) || 0) * (Number(it.qty) || 0) * (Number(it.factor) || 1),
+      name: it.name,
     }));
 
     const paymentAmt = paymentAmount || grandTotal;
@@ -149,17 +154,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
         qty,
         factor,
         price,
+        price_per_unit: price * factor,
         lineTotal,
       };
     });
 
-    const receiptPayload = {
+    const receiptPayload = buildCheckoutReceiptSnapshot({
       items: itemsPayload,
       total: grandTotal,
       createdAt: new Date().toISOString(),
       orderDate,
       customer: currentCustomer,
-    };
+      customerName: currentCustomer.name,
+      previousBalance: Number(currentCustomer.balance) || 0,
+      paymentAmount: paymentAmt,
+      balanceDue,
+      paymentStatus: paymentStat,
+      receipt_number: backendOrder?.receipt_number,
+      receipt_id: backendOrder?.receipt_id,
+      order_id: backendOrder?.order_id,
+    });
 
     setNavigationState({
       payload: receiptPayload,
