@@ -121,7 +121,7 @@ export default function Cart() {
         date: orderDate || new Date().toISOString().split("T")[0],
       };
 
-      let backendOrder = null;
+      let backendOrder: any = null;
 
       try {
         const res = await apiPost("sales/orders/create/", payload);
@@ -168,9 +168,9 @@ export default function Cart() {
         paymentAmount: payment,
         balanceDue: balance_due,
         paymentStatus: payment_status,
-        receipt_number: backendOrder?.receipt_number,
-        receipt_id: backendOrder?.receipt_id,
-        order_id: backendOrder?.order_id,
+        receiptNumber: backendOrder?.receipt_number || undefined,
+        receiptId: backendOrder?.receipt_id || undefined,
+        orderId: backendOrder?.order_id || undefined,
       });
 
       let successMessage = "";
