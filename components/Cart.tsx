@@ -104,7 +104,9 @@ export default function Cart() {
             Number(it.price || 0) * Number(it.factor || 1),
           ),
           lineTotal: String(
-            Number(it.price || 0) * Number(it.qty || 0) * Number(it.factor || 1),
+            Number(it.price || 0) *
+              Number(it.qty || 0) *
+              Number(it.factor || 1),
           ),
           name: it.name,
         })),
