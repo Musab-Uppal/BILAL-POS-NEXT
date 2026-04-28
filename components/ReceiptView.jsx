@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getReceipt, reprintReceipt } from "../lib/api";
 import { normalizeReceiptSnapshot } from "../lib/receipt";
@@ -27,6 +27,8 @@ export default function ReceiptView({
   const [logoError, setLogoError] = useState(false);
   const [loading, setLoading] = useState(testPayload ? false : true);
   const [isReprinting, setIsReprinting] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [pendingPath, setPendingPath] = useState(null);
 
   useEffect(() => {
     // In test mode, if a testPayload is provided ensure loading is false.
@@ -395,6 +397,20 @@ export default function ReceiptView({
     setLogoError(true);
   };
 
+  const navigateTo = (path) => {
+    setPendingPath(path);
+    startTransition(() => {
+      router.push(path);
+    });
+  };
+
+  const navSpinner = (
+    <span
+      className="inline-block h-4 w-4 rounded-full border-2 border-current/30 border-t-current animate-spin"
+      aria-hidden="true"
+    />
+  );
+
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4 md:p-6"
@@ -671,28 +687,31 @@ export default function ReceiptView({
                 🖨 Print Receipt
               </button>
               <button
-                onClick={() => router.push("/pos")}
+                onClick={() => navigateTo("/pos")}
+                disabled={isPending && pendingPath === "/pos"}
                 className="flex-1 py-3 px-4 rounded-xl border-2 border-purple-300 bg-white text-purple-600 font-bold text-base hover:bg-purple-50 transition-all duration-300 cursor-pointer flex items-center justify-center gap-2"
                 style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
               >
-                ✓ New Sale
+                {isPending && pendingPath === "/pos" ? navSpinner : "✓ New Sale"}
               </button>
             </div>
 
             {/* Additional Options */}
             <div className="flex justify-center gap-4 mt-4">
               <button
-                onClick={() => router.push("/report")}
+                onClick={() => navigateTo("/report")}
+                disabled={isPending && pendingPath === "/report"}
                 className="text-sm text-purple-600 hover:text-purple-800 font-medium"
               >
-                View Reports
+                {isPending && pendingPath === "/report" ? navSpinner : "View Reports"}
               </button>
               <span className="text-gray-400">•</span>
               <button
-                onClick={() => router.push("/pos")}
+                onClick={() => navigateTo("/pos")}
+                disabled={isPending && pendingPath === "/pos"}
                 className="text-sm text-gray-600 hover:text-gray-800 font-medium"
               >
-                Back to POS
+                {isPending && pendingPath === "/pos" ? navSpinner : "Back to POS"}
               </button>
             </div>
           </div>

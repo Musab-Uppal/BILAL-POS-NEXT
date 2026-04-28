@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPatch } from "../lib/api";
-import { useCart } from "../context/useCart";
 
 export default function ProductEditor({ id }: { id: string }) {
   const router = useRouter();
@@ -12,7 +11,6 @@ export default function ProductEditor({ id }: { id: string }) {
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { addToCart } = useCart();
 
   const SPECIAL_GROUP_IDS = [4, 6, 7, 5];
   const PERMANENTLY_EXCLUDED_IDS = [12];
@@ -119,17 +117,6 @@ export default function ProductEditor({ id }: { id: string }) {
     return Promise.all(updatePromises);
   };
 
-  const handleAddToCart = () => {
-    if (!product) return;
-
-    addToCart({
-      id: product.id,
-      name: product.product_name,
-      price: Number(price) || 0,
-    });
-    router.push("/pos");
-  };
-
   if (loading) return <div className="p-5">Loading product...</div>;
 
   return (
@@ -139,7 +126,7 @@ export default function ProductEditor({ id }: { id: string }) {
           ? "View Product (Read-only)"
           : isSpecialProduct
             ? "Edit Special Product"
-            : "Edit Product (Updates All Regular Products)"}
+            : "Edit Product"}
       </h2>
 
       <div className="max-w-[520px] bg-white p-4 rounded-lg shadow-md">
@@ -228,16 +215,6 @@ export default function ProductEditor({ id }: { id: string }) {
           >
             Cancel
           </button>
-
-          {!isExcludedProduct && (
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              className="py-2 px-3.5 rounded-md bg-green-500 text-white border-none font-semibold ml-auto"
-            >
-              Add to Cart
-            </button>
-          )}
         </div>
       </div>
     </div>

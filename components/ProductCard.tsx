@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Plus, Edit } from "lucide-react";
 
 export default function ProductCard({
@@ -13,6 +13,7 @@ export default function ProductCard({
   onEdit?: () => void;
 }) {
   const [imageError, setImageError] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const safeProduct = product || {};
   const productId = safeProduct.productId || "";
@@ -32,7 +33,9 @@ export default function ProductCard({
     e.stopPropagation();
     e.preventDefault();
     if (typeof onEdit === "function") {
-      onEdit();
+      startTransition(() => {
+        onEdit();
+      });
     }
   };
 
@@ -50,12 +53,18 @@ export default function ProductCard({
       {typeof onEdit === "function" && (
         <button
           onClick={handleEditClick}
+          disabled={isPending}
           className="edit-button absolute top-1.5 sm:top-2 left-1.5 sm:left-2 z-10 p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:shadow-md sm:hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-blue-300"
           title="Edit Product"
           type="button"
           aria-label={`Edit ${productName}`}
+          aria-busy={isPending}
         >
-          <Edit className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          {isPending ? (
+            <span className="inline-block h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+          ) : (
+            <Edit className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          )}
         </button>
       )}
 

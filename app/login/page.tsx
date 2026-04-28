@@ -26,8 +26,19 @@ export default function LoginPage() {
       await login(username, password);
       window.location.href = "/pos";
     } catch (err) {
-      console.error("Login failed", err);
-      setError("Invalid username or password");
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const message =
+        (err as { response?: { data?: { detail?: string; error?: string } } })
+          ?.response?.data?.detail ||
+        (err as { response?: { data?: { detail?: string; error?: string } } })
+          ?.response?.data?.error ||
+        "Invalid username or password";
+
+      if (status !== 401) {
+        console.error("Login failed", err);
+      }
+
+      setError(message);
     } finally {
       setLoading(false);
     }

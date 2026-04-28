@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, BarChart3, UserPlus, LogOut, Menu, X } from "lucide-react";
 import { logout } from "../lib/api";
@@ -9,6 +9,9 @@ function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (
     pathname === "/login" ||
@@ -30,19 +33,24 @@ function Header() {
     return pathname.startsWith(path);
   };
 
-  const handleAddCustomer = () => {
-    router.push("/add-customer");
-    setIsMenuOpen(false);
+  const navigateTo = (path: string) => {
+    setPendingPath(path);
+    startTransition(() => {
+      router.push(path);
+      setIsMenuOpen(false);
+    });
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
-
-  const handleNavigation = (path: string) => {
-    router.push(path);
-    setIsMenuOpen(false);
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      startTransition(() => {
+        router.push("/login");
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -93,14 +101,19 @@ function Header() {
               return (
                 <button
                   key={item.path}
-                  onClick={() => router.push(item.path)}
+                  onClick={() => navigateTo(item.path)}
+                  disabled={isPending && pendingPath === item.path}
                   className={`group flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-sm font-semibold transition-all duration-200 ${
                     isActive
                       ? "bg-white/25 text-white shadow-lg backdrop-blur-sm border border-white/30"
                       : "text-white/90 hover:text-white hover:bg-white/15 border border-transparent hover:border-white/20"
                   }`}
                 >
-                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {isPending && pendingPath === item.path ? (
+                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  )}
                   {item.label}
                 </button>
               );
@@ -109,29 +122,44 @@ function Header() {
 
           <div className="hidden sm:flex items-center gap-2">
             <button
-              onClick={handleAddCustomer}
+              onClick={() => navigateTo("/add-customer")}
+              disabled={isPending && pendingPath === "/add-customer"}
               className="bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 font-semibold shadow-lg hover:shadow-xl flex items-center gap-2 text-sm"
             >
-              <UserPlus className="w-3 h-3 sm:w-4 sm:h-4" />
+              {isPending && pendingPath === "/add-customer" ? (
+                <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+              ) : (
+                <UserPlus className="w-3 h-3 sm:w-4 sm:h-4" />
+              )}
               Add Customer
             </button>
 
             <button
               onClick={handleLogout}
+              disabled={isLoggingOut}
               className="bg-linear-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 font-semibold shadow-lg hover:shadow-xl flex items-center gap-2 text-sm"
               title="Logout"
             >
-              <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+              {isLoggingOut ? (
+                <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+              ) : (
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+              )}
               Logout
             </button>
           </div>
 
           <button
             onClick={handleLogout}
+            disabled={isLoggingOut}
             className="sm:hidden bg-linear-to-r from-red-500 to-rose-600 text-white px-3 py-1.5 rounded-lg font-semibold shadow-lg flex items-center gap-2 text-sm"
             title="Logout"
           >
-            <LogOut className="w-3 h-3" />
+            {isLoggingOut ? (
+              <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+            ) : (
+              <LogOut className="w-3 h-3" />
+            )}
           </button>
         </div>
       </div>
@@ -149,24 +177,34 @@ function Header() {
                 return (
                   <button
                     key={item.path}
-                    onClick={() => handleNavigation(item.path)}
+                    onClick={() => navigateTo(item.path)}
+                    disabled={isPending && pendingPath === item.path}
                     className={`group flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                       isActive
                         ? "bg-white/25 text-white backdrop-blur-sm border border-white/30"
                         : "text-white/90 hover:text-white hover:bg-white/15 border border-transparent hover:border-white/20"
                     }`}
                   >
-                    <Icon className="w-5 h-5" />
+                      {isPending && pendingPath === item.path ? (
+                        <span className="inline-block h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Icon className="w-5 h-5" />
+                      )}
                     {item.label}
                   </button>
                 );
               })}
 
               <button
-                onClick={handleAddCustomer}
+                  onClick={() => navigateTo("/add-customer")}
+                  disabled={isPending && pendingPath === "/add-customer"}
                 className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold transition-all duration-200"
               >
-                <UserPlus className="w-5 h-5" />
+                  {isPending && pendingPath === "/add-customer" ? (
+                    <span className="inline-block h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+                  ) : (
+                    <UserPlus className="w-5 h-5" />
+                  )}
                 Add Customer
               </button>
             </div>
