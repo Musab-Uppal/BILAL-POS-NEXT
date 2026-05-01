@@ -12,7 +12,6 @@ import OrderDetailReport from "./OrderDetailReport";
 export default function MonthlyReport({ reports }) {
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [debugInfo, setDebugInfo] = useState({});
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -21,82 +20,7 @@ export default function MonthlyReport({ reports }) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Enhanced debugging with state tracking
-  useEffect(() => {
-    console.log("=".repeat(80));
-    console.log("🔍 MONTHLY REPORT DEBUG - START");
-    console.log("=".repeat(80));
-    
-    console.log("📦 Raw reports prop:", reports);
-    console.log("📦 Type of reports:", typeof reports);
-    console.log("📦 Is array?", Array.isArray(reports));
-    console.log("📦 Is null/undefined?", reports == null);
 
-    if (reports) {
-      // Log the full object structure
-      console.log("📦 Full object structure:");
-      console.log(JSON.stringify(reports, null, 2));
-      
-      if (Array.isArray(reports)) {
-        console.log("📦 Reports is an ARRAY");
-        console.log("📦 Array length:", reports.length);
-        if (reports.length > 0) {
-          console.log("📦 First item structure:", reports[0]);
-          console.log("📦 First item keys:", Object.keys(reports[0]));
-          console.log("📦 First item month value:", reports[0]?.month);
-          console.log("📦 First item total_sales:", reports[0]?.total_sales);
-        } else {
-          console.log("📦 Array is EMPTY");
-        }
-      } else if (typeof reports === 'object') {
-        console.log("📦 Reports is an OBJECT");
-        console.log("📦 Object keys:", Object.keys(reports));
-        
-        // Check each key
-        Object.keys(reports).forEach(key => {
-          const value = reports[key];
-          console.log(`📦 Key "${key}":`, {
-            type: typeof value,
-            isArray: Array.isArray(value),
-            length: Array.isArray(value) ? value.length : 'N/A',
-            value: Array.isArray(value) && value.length > 0 ? `First item: ${JSON.stringify(value[0])}` : value
-          });
-        });
-        
-        if (reports.reports) {
-          console.log("📦 Found 'reports' property");
-          console.log("📦 reports.reports type:", typeof reports.reports);
-          console.log("📦 reports.reports is array?", Array.isArray(reports.reports));
-          if (Array.isArray(reports.reports)) {
-            console.log("📦 reports.reports length:", reports.reports.length);
-            if (reports.reports.length > 0) {
-              console.log("📦 First reports item:", reports.reports[0]);
-            }
-          }
-        }
-      }
-    }
-
-    // Update debug info state
-    const info = {
-      receivedAt: new Date().toISOString(),
-      type: typeof reports,
-      isArray: Array.isArray(reports),
-      isNewFormat: reports && reports.reports,
-      keys: reports ? Object.keys(reports) : [],
-      reportsLength: Array.isArray(reports) ? reports.length : 
-                     (reports?.reports && Array.isArray(reports.reports) ? reports.reports.length : 0),
-      hasCustomerFilter: reports && 'customer_filter' in reports,
-      hasCustomerBalance: reports && 'customer_balance' in reports
-    };
-    
-    setDebugInfo(info);
-    console.log("📦 Debug Info:", info);
-    
-    console.log("=".repeat(80));
-    console.log("🔍 MONTHLY REPORT DEBUG - END");
-    console.log("=".repeat(80));
-  }, [reports]);
 
   // Check if reports is valid
   if (!reports) {
@@ -104,10 +28,7 @@ export default function MonthlyReport({ reports }) {
       <div className="text-center py-12">
         <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-gray-700 mb-2">No Data Received</h3>
-        <p className="text-gray-500">The monthly report data is null or undefined.</p>
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-          <p className="text-sm text-red-800">Debug: reports prop is falsy</p>
-        </div>
+        <p className="text-gray-500">No monthly report data available.</p>
       </div>
     );
   }
@@ -118,15 +39,7 @@ export default function MonthlyReport({ reports }) {
   const customerFilter = isNewFormat ? reports.customer_filter : null;
   const customerBalance = isNewFormat ? reports.customer_balance : null;
 
-  console.log("🔍 Parsed data - FINAL:", {
-    isNewFormat,
-    reportsArrayLength: reportsArray.length,
-    reportsArray: reportsArray.slice(0, 3), // Show first 3 items
-    customerFilter,
-    customerBalance,
-    customerFilterExists: customerFilter !== null && customerFilter !== undefined,
-    customerBalanceExists: customerBalance !== null && customerBalance !== undefined
-  });
+
 
   // If no reports data
   if (!reportsArray || reportsArray.length === 0) {
@@ -134,35 +47,7 @@ export default function MonthlyReport({ reports }) {
       <div className="text-center py-12">
         <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-gray-700 mb-2">No Monthly Data Found</h3>
-        <p className="text-gray-500">
-          The monthly report data is empty.
-          {reports && typeof reports === 'object' && Object.keys(reports).length > 0 && (
-            <span> Received object with keys: {Object.keys(reports).join(', ')}</span>
-          )}
-        </p>
-        
-        {/* Debug panel */}
-        <div className="mt-6 max-w-2xl mx-auto">
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-2">Debug Information</h4>
-            <div className="text-left">
-              <p className="text-sm"><strong>Type:</strong> {typeof reports}</p>
-              <p className="text-sm"><strong>Is Array:</strong> {Array.isArray(reports).toString()}</p>
-              <p className="text-sm"><strong>Is New Format:</strong> {isNewFormat.toString()}</p>
-              <p className="text-sm"><strong>Reports Array Length:</strong> {reportsArray.length}</p>
-              <p className="text-sm"><strong>Has customer_filter:</strong> {'customer_filter' in reports ? 'Yes' : 'No'}</p>
-              <p className="text-sm"><strong>Has customer_balance:</strong> {'customer_balance' in reports ? 'Yes' : 'No'}</p>
-              {reports && typeof reports === 'object' && (
-                <>
-                  <p className="text-sm mt-2"><strong>Object Structure:</strong></p>
-                  <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-auto max-h-40">
-                    {JSON.stringify(reports, null, 2)}
-                  </pre>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <p className="text-gray-500">No monthly report data available for the selected period.</p>
       </div>
     );
   }
@@ -193,8 +78,7 @@ export default function MonthlyReport({ reports }) {
         year: "numeric",
         month: "long",
       });
-    } catch (error) {
-      console.error("Error formatting month:", error);
+    } catch {
       return monthString;
     }
   };
@@ -222,48 +106,7 @@ export default function MonthlyReport({ reports }) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Enhanced Debug header */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-4 mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h4 className="text-sm font-semibold text-blue-800 mb-1">Debug Information</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <div className="bg-white p-2 rounded border">
-                <span className="text-gray-600">Format:</span>{" "}
-                <span className="font-semibold">{isNewFormat ? 'New' : 'Old'}</span>
-              </div>
-              <div className="bg-white p-2 rounded border">
-                <span className="text-gray-600">Months:</span>{" "}
-                <span className="font-semibold">{reportsArray.length}</span>
-              </div>
-              <div className="bg-white p-2 rounded border">
-                <span className="text-gray-600">Total Sales:</span>{" "}
-                <span className="font-semibold">{formatCurrency(totalSales)}</span>
-              </div>
-              <div className="bg-white p-2 rounded border">
-                <span className="text-gray-600">Has Filter:</span>{" "}
-                <span className="font-semibold">{customerFilter ? 'Yes' : 'No'}</span>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              console.log("📊 Current data snapshot:", {
-                reportsArray,
-                customerFilter,
-                customerBalance,
-                firstItem: reportsArray[0]
-              });
-              alert('Check console for data snapshot');
-            }}
-            className="mt-2 sm:mt-0 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-          >
-            Log Data
-          </button>
-        </div>
-      </div>
-
-      {/* Main Header (Fixed - only one instance) */}
+      {/* Main Header */}
       <div className="flex items-center gap-3 mb-4">
         <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
         <h3 className="text-xl sm:text-2xl font-bold text-gray-800">

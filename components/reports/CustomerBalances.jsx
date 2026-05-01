@@ -49,7 +49,6 @@ export default function CustomerBalances() {
         setBalances(res.data);
       }
     } catch (err) {
-      console.error("Failed to fetch customer balances", err);
       setError(err.response?.data?.error || "Failed to load customer balances");
     } finally {
       setLoading(false);

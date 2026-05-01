@@ -46,7 +46,7 @@ export default function ReceiptView({
         setBackendResponse(state?.response || null);
       }
     } catch (e) {
-      console.error("Error reading receipt navigation state", e);
+
     } finally {
       window.sessionStorage.removeItem("receipt_navigation_state");
     }
@@ -69,7 +69,7 @@ export default function ReceiptView({
           // Increment reprint count
           await reprintReceipt(receiptId);
         } catch (error) {
-          console.error("Error fetching receipt:", error);
+
           // Fallback to data in URL if available
           if (printData) {
             try {
@@ -77,7 +77,7 @@ export default function ReceiptView({
               const parsedData = JSON.parse(decodedData);
               setUrlData(parsedData);
             } catch (e) {
-              console.error("Error parsing URL data", e);
+
             }
           }
         } finally {
@@ -93,7 +93,7 @@ export default function ReceiptView({
         setUrlData(parsedData);
         setLoading(false);
       } catch (e) {
-        console.error("Error parsing URL data", e);
+
         // If can't parse URL data, try location state
         if (!locationPayload) {
           router.push("/pos");
@@ -107,7 +107,7 @@ export default function ReceiptView({
           const response = await getReceipt(checkoutReceiptId);
           setUrlData(response.data);
         } catch (error) {
-          console.error("Error fetching newly created receipt:", error);
+
         } finally {
           setLoading(false);
         }
@@ -315,7 +315,7 @@ export default function ReceiptView({
         try {
           window.print();
         } catch (e) {
-          console.log(e);
+          // Print failed silently
         }
       }, 500);
 

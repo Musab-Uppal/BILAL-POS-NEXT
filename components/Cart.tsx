@@ -113,9 +113,7 @@ export default function Cart() {
         payment_method: "cash",
         payment_status,
         total_amount: String(grandTotal.toFixed(2)),
-        balance_due: String(
-          Math.max(0, grandTotal - parseFloat(paymentAmount || "0")).toFixed(2),
-        ),
+        balance_due: String(balance_due.toFixed(2)),
         date: orderDate || new Date().toISOString().split("T")[0],
       };
 
@@ -125,8 +123,6 @@ export default function Cart() {
         const res = await apiPost("sales/orders/create/", payload);
         backendOrder = res.data;
       } catch (err: any) {
-        console.error("Payment checkout failed", err);
-        console.error("Error details:", err.response?.data);
         alert(
           `Payment failed: ${
             err.response?.data
@@ -200,7 +196,7 @@ export default function Cart() {
         setOrderDate(new Date().toISOString().split("T")[0]);
       }
     } catch (err: any) {
-      console.error("Payment error", err);
+
       alert(err.response?.data?.message || "Payment failed. Please try again.");
     } finally {
       setProcessingPayment(false);
@@ -283,7 +279,7 @@ export default function Cart() {
 
       <div
         className={`
-        lg:w-full lg:h-full lg:bg-linear-to-br lg:from-white lg:to-purple-50 lg:p-3 lg:rounded-2xl lg:shadow-xl lg:border lg:border-purple-200
+        lg:w-full h-max lg:h-full lg:bg-linear-to-br lg:from-white lg:to-purple-50 lg:p-3 lg:rounded-2xl lg:shadow-xl lg:border lg:border-purple-200
         fixed lg:relative top-0 right-0 h-screen w-[90vw] max-w-md bg-white z-50 shadow-2xl transition-transform duration-300
         ${isCartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
       `}

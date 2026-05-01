@@ -681,130 +681,67 @@ export const apiPost = async (
   }
 
   if (url === "sales/orders/create/") {
-    // Manual transaction logic because RPC is broken (missing column in receipts table)
+    const p_customer = Number(data.customer);
+    const p_items = data.items;
+    const p_payment_amount = toNumber(data.payment_amount || 0);
+    const p_payment_method = data.payment_method || "cash";
+    const p_payment_status = data.payment_status || "unpaid";
+    const p_total_amount = toNumber(data.total_amount || 0);
+    const p_balance_due = toNumber(data.balance_due || 0);
+    const p_date = data.date || formatDate(new Date());
+
+    // ============================================================
+    // PRIMARY PATH: Atomic RPC (single DB transaction)
+    // If any step fails inside the RPC, ALL changes are rolled
+    // back automatically — including the balance trigger.
+    // ============================================================
     try {
-      const p_customer = Number(data.customer);
-      const p_items = data.items;
-      const p_payment_amount = toNumber(data.payment_amount || 0);
-      const p_payment_method = data.payment_method || "cash";
-      const p_payment_status = data.payment_status || "unpaid";
-      const p_total_amount = toNumber(data.total_amount || 0);
-      const p_balance_due = toNumber(data.balance_due || 0);
-      const p_date = data.date || formatDate(new Date());
-
-      // 1. Get client data for receipt
-      const { data: client, error: clientErr } = await supabase
-        .from("client")
-        .select("name, balance")
-        .eq("id", p_customer)
-        .single();
-      if (clientErr) throw clientErr;
-
-      // 2. Create Order
-      const { data: order, error: orderErr } = await supabase
-        .from("order")
-        .insert({
-          client_id: p_customer,
-          total: p_total_amount,
-          date: p_date,
-          payment_amount: p_payment_amount,
-          payment_method: p_payment_method,
-          payment_status: p_payment_status,
-          balance_due: p_balance_due,
-        })
-        .select()
-        .single();
-      if (orderErr) throw orderErr;
-
-      // 3. Create Order Items
-      const orderItems = p_items.map((it: any) => ({
-        order_id: order.id,
-        item_id: Number(it.product),
-        quantity: toNumber(it.quantity),
-        price: toNumber(it.price_per_unit ?? it.price ?? 0),
+      const rpcItems = p_items.map((it: any) => ({
+        product: String(it.product),
+        quantity: String(toNumber(it.quantity)),
+        factor: String(toNumber(it.factor ?? 1)),
+        price: String(toNumber(it.price_per_unit ?? it.price ?? 0)),
+        price_per_unit: String(toNumber(it.price_per_unit ?? it.price ?? 0)),
+        lineTotal: String(toNumber(it.lineTotal ?? it.total ?? 0)),
+        name: it.name || it.product_name || "Product",
+        unit: it.unit || "kg",
       }));
-      const { error: itemsErr } = await supabase
-        .from("order_items")
-        .insert(orderItems);
-      if (itemsErr) throw itemsErr;
 
-      // 4. Generate Receipt Number (try RPC first)
-      let receiptNumber = `REC-${Date.now()}`;
-      try {
-        const { data: rn } = await supabase.rpc("generate_receipt_number");
-        if (rn) receiptNumber = rn;
-      } catch (e) {
-        console.warn("Failed to generate receipt number via RPC, using fallback", e);
-      }
+      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+        "create_order_with_receipt",
+        {
+          p_customer,
+          p_items: rpcItems,
+          p_payment_amount,
+          p_payment_method,
+          p_payment_status,
+          p_total_amount,
+          p_balance_due,
+          p_date: p_date,
+        },
+      );
 
-      // 5. Create Receipt (OMITTING payment_method because it's missing in DB)
-      const { data: receipt, error: receiptErr } = await supabase
-        .from("receipts")
-        .insert({
-          order_id: order.id,
-          client_id: p_customer,
-          customer_name: client.name,
-          previous_balance: toNumber(client.balance),
-          current_bill_amount: p_total_amount,
-          payment_made: p_payment_amount,
-          this_bill_balance: p_balance_due,
-          updated_balance: toNumber(client.balance) + (p_total_amount - p_payment_amount),
-          receipt_number: receiptNumber,
-          receipt_date: new Date().toISOString(),
-          // payment_method is omitted to avoid the error reported by the user
-        })
-        .select()
-        .single();
-      
-      // If receipt creation fails, we still have the order, but we should log it
-      if (receiptErr) {
-        console.error("Receipt creation failed but order was saved:", receiptErr.message);
-      }
+      if (rpcError) throw rpcError;
 
-      if (receipt?.id) {
-        const receiptItems = p_items.map((it: any) => {
-          const quantity = toNumber(it.quantity);
-          const rate = toNumber(it.price_per_unit ?? it.price ?? 0);
-          return {
-            receipt_id: receipt.id,
-            product_id: Number(it.productId ?? it.product ?? 0),
-            product_name: it.name || it.product_name || "Product",
-            quantity,
-            unit: it.unit || "kg",
-            price_per_unit: rate,
-            total: toNumber(it.lineTotal ?? it.total ?? quantity * rate),
-          };
-        });
-
-        const { error: receiptItemsErr } = await supabase
-          .from("receipt_items")
-          .insert(receiptItems);
-
-        if (receiptItemsErr) {
-          console.error(
-            "Receipt item creation failed but order and receipt were saved:",
-            receiptItemsErr.message,
-          );
-        }
-      }
+      // RPC succeeded — build the receipt snapshot from the returned data
+      const rpcData = rpcResult as any;
 
       const receiptSnapshot = normalizeReceiptSnapshot({
-        id: receipt?.id || order.id,
-        order_id: order.id,
-        receipt_number: receiptNumber,
-        receipt_date: receipt?.receipt_date || new Date().toISOString(),
-        customer_name: client.name,
-        previous_balance: toNumber(client.balance),
-        current_bill_amount: p_total_amount,
-        payment_made: p_payment_amount,
-        this_bill_balance: p_balance_due,
-        updated_balance:
-          toNumber(client.balance) + (p_total_amount - p_payment_amount),
-        payment_status: p_payment_status,
+        id: rpcData.receipt_id,
+        order_id: rpcData.order_id,
+        receipt_number: rpcData.receipt_number,
+        receipt_date: rpcData.receipt_date || new Date().toISOString(),
+        customer_name: rpcData.customer_name,
+        previous_balance: toNumber(rpcData.previous_balance),
+        current_bill_amount: toNumber(rpcData.current_bill_amount),
+        payment_made: toNumber(rpcData.payment_made),
+        this_bill_balance: toNumber(rpcData.this_bill_balance),
+        updated_balance: toNumber(rpcData.updated_balance),
+        payment_status: rpcData.payment_status || p_payment_status,
         customer: {
-          name: client.name,
-          balance: toNumber(client.balance),
-          starting_balance: toNumber(client.balance),
+          name: rpcData.customer_name,
+          balance: toNumber(rpcData.previous_balance),
+          starting_balance: toNumber(rpcData.previous_balance),
         },
         items: p_items.map((it: any) =>
           normalizeReceiptItem({
@@ -819,17 +756,287 @@ export const apiPost = async (
         ),
       });
 
-      // Return expected payload format
+      return {
+        data: {
+          order_id: rpcData.order_id,
+          receipt_id: rpcData.receipt_id,
+          receipt_number: rpcData.receipt_number,
+          receipt: receiptSnapshot,
+        },
+      };
+    } catch (rpcErr: any) {
+      // RPC failed, fall back to manual flow
+    }
+
+    // ============================================================
+    // FALLBACK PATH: Manual multi-step with FULL ROLLBACK
+    // If any step fails after an order is created, we clean up
+    // everything and revert the client balance.
+    // ============================================================
+    let createdOrderId: number | null = null;
+    let createdReceiptId: number | null = null;
+    let originalClientBalance: number | null = null;
+
+    try {
+      // 1. Get client data (balance BEFORE order creation)
+      const { data: client, error: clientErr } = await supabase
+        .from("client")
+        .select("name, balance")
+        .eq("id", p_customer)
+        .single();
+      if (clientErr) throw clientErr;
+
+      originalClientBalance = toNumber(client.balance);
+
+      // 2. Create Order (this triggers automatic balance update)
+      let order = null;
+      let orderErr = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: maxOrder } = await supabase
+          .from("order")
+          .select("id")
+          .order("id", { ascending: false })
+          .limit(1);
+        const nextOrderId =
+          maxOrder && maxOrder.length > 0 ? Number(maxOrder[0].id) + 1 : 1;
+
+        const res = await supabase
+          .from("order")
+          .insert({
+            id: nextOrderId,
+            client_id: p_customer,
+            total: p_total_amount,
+            date: p_date,
+            payment_amount: p_payment_amount,
+            payment_method: p_payment_method,
+            payment_status: p_payment_status,
+            balance_due: p_balance_due,
+          })
+          .select()
+          .single();
+
+        if (!res.error) {
+          order = res.data;
+          orderErr = null;
+          break;
+        } else if (res.error.code !== "23505") {
+          orderErr = res.error;
+          break;
+        }
+        orderErr = res.error;
+      }
+      if (orderErr) throw orderErr;
+      createdOrderId = order.id;
+
+      // 3. Create Order Items
+      let itemsErr = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: maxItem } = await supabase
+          .from("order_items")
+          .select("id")
+          .order("id", { ascending: false })
+          .limit(1);
+        let nextItemId =
+          maxItem && maxItem.length > 0 ? Number(maxItem[0].id) + 1 : 1;
+
+        const orderItems = p_items.map((it: any) => ({
+          id: nextItemId++,
+          order_id: order.id,
+          item_id: Number(it.product),
+          quantity: toNumber(it.quantity),
+          price: toNumber(it.price_per_unit ?? it.price ?? 0),
+        }));
+
+        const res = await supabase.from("order_items").insert(orderItems);
+        if (!res.error) {
+          itemsErr = null;
+          break;
+        } else if (res.error.code !== "23505") {
+          itemsErr = res.error;
+          break;
+        }
+        itemsErr = res.error;
+      }
+      if (itemsErr) throw itemsErr;
+
+      // 4. Generate Receipt Number
+      let receiptNumber = `REC-${Date.now()}`;
+      try {
+        const { data: rn } = await supabase.rpc("generate_receipt_number");
+        if (rn) receiptNumber = rn;
+      } catch (e) {
+        // Fallback receipt number generation failed, use timestamp-based number
+      }
+
+      // 5. Create Receipt
+      let receipt = null;
+      let receiptErr = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: maxReceipt } = await supabase
+          .from("receipts")
+          .select("id")
+          .order("id", { ascending: false })
+          .limit(1);
+        const nextReceiptId =
+          maxReceipt && maxReceipt.length > 0
+            ? Number(maxReceipt[0].id) + 1
+            : 1;
+
+        const res = await supabase
+          .from("receipts")
+          .insert({
+            id: nextReceiptId,
+            order_id: order.id,
+            client_id: p_customer,
+            customer_name: client.name,
+            previous_balance: originalClientBalance,
+            current_bill_amount: p_total_amount,
+            payment_made: p_payment_amount,
+            this_bill_balance: p_balance_due,
+            updated_balance: originalClientBalance + p_balance_due,
+            receipt_number: receiptNumber,
+            receipt_date: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (!res.error) {
+          receipt = res.data;
+          receiptErr = null;
+          break;
+        } else if (res.error.code !== "23505") {
+          receiptErr = res.error;
+          break;
+        }
+        receiptErr = res.error;
+      }
+      if (receiptErr) throw receiptErr;
+      createdReceiptId = receipt.id;
+
+      // 6. Create Receipt Items
+      let receiptItemsErr = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: maxRItem } = await supabase
+          .from("receipt_items")
+          .select("id")
+          .order("id", { ascending: false })
+          .limit(1);
+        let nextRItemId =
+          maxRItem && maxRItem.length > 0 ? Number(maxRItem[0].id) + 1 : 1;
+
+        const receiptItems = p_items.map((it: any) => {
+          const quantity = toNumber(it.quantity);
+          const rate = toNumber(it.price_per_unit ?? it.price ?? 0);
+          return {
+            id: nextRItemId++,
+            receipt_id: receipt.id,
+            product_id: Number(it.productId ?? it.product ?? 0),
+            product_name: it.name || it.product_name || "Product",
+            quantity,
+            unit: it.unit || "kg",
+            price_per_unit: rate,
+            total: toNumber(it.lineTotal ?? it.total ?? quantity * rate),
+          };
+        });
+
+        const res = await supabase.from("receipt_items").insert(receiptItems);
+        if (!res.error) {
+          receiptItemsErr = null;
+          break;
+        } else if (res.error.code !== "23505") {
+          receiptItemsErr = res.error;
+          break;
+        }
+        receiptItemsErr = res.error;
+      }
+      if (receiptItemsErr) throw receiptItemsErr;
+
+      // All steps succeeded — build the receipt snapshot
+      const receiptSnapshot = normalizeReceiptSnapshot({
+        id: receipt.id,
+        order_id: order.id,
+        receipt_number: receiptNumber,
+        receipt_date: receipt.receipt_date || new Date().toISOString(),
+        customer_name: client.name,
+        previous_balance: originalClientBalance,
+        current_bill_amount: p_total_amount,
+        payment_made: p_payment_amount,
+        this_bill_balance: p_balance_due,
+        updated_balance: originalClientBalance + p_balance_due,
+        payment_status: p_payment_status,
+        customer: {
+          name: client.name,
+          balance: originalClientBalance,
+          starting_balance: originalClientBalance,
+        },
+        items: p_items.map((it: any) =>
+          normalizeReceiptItem({
+            name: it.name || it.product_name,
+            productId: it.productId ?? it.product ?? null,
+            qty: it.quantity,
+            factor: it.factor,
+            price_per_unit: it.price_per_unit ?? it.price,
+            lineTotal: it.lineTotal ?? it.total,
+            unit: it.unit,
+          }),
+        ),
+      });
+
       return {
         data: {
           order_id: order.id,
-          receipt_id: receipt?.id || null,
+          receipt_id: receipt.id,
           receipt_number: receiptNumber,
           receipt: receiptSnapshot,
         },
       };
     } catch (error: any) {
-      throw createApiError(error.message || "Manual checkout failed", 400, error);
+      // ============================================================
+      // ROLLBACK: Clean up any partial data so no orphan orders exist
+      // ============================================================
+
+
+      try {
+        if (createdReceiptId) {
+          await supabase
+            .from("receipt_items")
+            .delete()
+            .eq("receipt_id", createdReceiptId);
+          await supabase.from("receipts").delete().eq("id", createdReceiptId);
+        }
+        if (createdOrderId) {
+          await supabase
+            .from("order_items")
+            .delete()
+            .eq("order_id", createdOrderId);
+          await supabase.from("order").delete().eq("id", createdOrderId);
+          // Revert the client balance (the order insert trigger added balance_due)
+          if (originalClientBalance !== null) {
+            await supabase
+              .from("client")
+              .update({ balance: originalClientBalance })
+              .eq("id", p_customer);
+          }
+        }
+
+      } catch (rollbackErr: any) {
+
+      }
+
+      const errorData =
+        error && typeof error === "object"
+          ? {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint,
+            }
+          : error;
+      throw createApiError(
+        error?.message || "Order creation failed",
+        400,
+        errorData,
+      );
     }
   }
 

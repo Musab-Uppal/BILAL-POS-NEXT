@@ -49,7 +49,7 @@ export default function PosPage() {
           setProducts([]);
         }
       } catch (err) {
-        console.warn("Failed to fetch products", err);
+
         setProducts([]);
       } finally {
         setLoading(false);
@@ -65,7 +65,7 @@ export default function PosPage() {
           setCustomers([]);
         }
       } catch (err) {
-        console.warn("Failed to fetch customers", err);
+
         setCustomers([]);
       } finally {
         setCustomersLoading(false);

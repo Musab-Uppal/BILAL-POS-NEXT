@@ -119,7 +119,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const paymentAmt = paymentAmount || grandTotal;
     const balanceDue = grandTotal - paymentAmt;
-    const paymentStat = balanceDue > 0 ? "partial" : "paid";
+    let paymentStat = "partial";
+    if (paymentAmt === 0) {
+      paymentStat = "unpaid";
+    } else if (paymentAmt >= grandTotal) {
+      paymentStat = "paid";
+    }
 
     const payload = {
       customer: currentCustomer.id,
@@ -137,9 +142,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const res = await apiPost("sales/orders/create/", payload);
       backendOrder = res.data;
-    } catch (err) {
-      console.error("Checkout failed", err);
-      alert("Checkout failed – but showing receipt anyway.");
+    } catch (err: any) {
+      alert(
+        `Checkout failed: ${
+          err.response?.data?.message ||
+          err.response?.data?.details ||
+          "Please try again or contact support."
+        }`,
+      );
+      return;
     }
 
     const itemsPayload = cart.map((it) => {
