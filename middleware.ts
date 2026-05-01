@@ -75,7 +75,6 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     // If Supabase auth is temporarily unreachable, do not block the route.
     // Keep the app usable for existing sessions instead of failing the page load.
-    console.warn("middleware auth check failed", error);
 
     if (!hasAuthCookies && request.nextUrl.pathname !== "/login") {
       const url = request.nextUrl.clone();
@@ -103,7 +102,7 @@ export async function middleware(request: NextRequest) {
       try {
         await supabase.auth.signOut();
       } catch (error) {
-        console.warn("middleware signOut failed", error);
+        // Silently fail on sign out error
       }
 
       if (!isLoginRoute) {
