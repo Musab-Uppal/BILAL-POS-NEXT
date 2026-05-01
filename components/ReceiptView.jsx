@@ -92,7 +92,6 @@ export default function ReceiptView({
         setUrlData(parsedData);
         setLoading(false);
       } catch (e) {
-
         // If can't parse URL data, try location state
         if (!locationPayload) {
           router.push("/pos");
@@ -383,8 +382,13 @@ export default function ReceiptView({
   const thisOrderBalanceDue = parseFloat(payload.this_bill_balance) || 0;
   const updatedBalance = parseFloat(payload.updated_balance) || 0;
   const paymentStatus = payload.payment_status || "paid";
-  const customerName = payload.customer_name || payload.customer?.name || payload.customer;
-  const receiptDate = payload.receipt_date || payload.createdAt || payload.orderDate || payload.date;
+  const customerName =
+    payload.customer_name || payload.customer?.name || payload.customer;
+  const receiptDate =
+    payload.receipt_date ||
+    payload.createdAt ||
+    payload.orderDate ||
+    payload.date;
 
   // Determine if it's a partial or full payment
   const isFullPayment = paymentStatus === "paid";
@@ -514,6 +518,7 @@ export default function ReceiptView({
               style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
             >
               {new Date(receiptDate).toLocaleString("en-US", {
+                timeZone: "Asia/Karachi",
                 year: "numeric",
                 month: "short",
                 day: "numeric",
@@ -576,13 +581,18 @@ export default function ReceiptView({
                       className="py-1.5 text-right align-top"
                       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
                     >
-                      {Number(parseFloat(it.rate ?? it.price_per_unit ?? it.price) || 0).toFixed(2)}
+                      {Number(
+                        parseFloat(it.rate ?? it.price_per_unit ?? it.price) ||
+                          0,
+                      ).toFixed(2)}
                     </td>
                     <td
                       className="py-1.5 text-right align-top font-semibold"
                       style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
                     >
-                      {Number(parseFloat(it.lineTotal ?? it.total) || 0).toFixed(2)}
+                      {Number(
+                        parseFloat(it.lineTotal ?? it.total) || 0,
+                      ).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -691,7 +701,9 @@ export default function ReceiptView({
                 className="flex-1 py-3 px-4 rounded-xl border-2 border-purple-300 bg-white text-purple-600 font-bold text-base hover:bg-purple-50 transition-all duration-300 cursor-pointer flex items-center justify-center gap-2"
                 style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
               >
-                {isPending && pendingPath === "/pos" ? navSpinner : "✓ New Sale"}
+                {isPending && pendingPath === "/pos"
+                  ? navSpinner
+                  : "✓ New Sale"}
               </button>
             </div>
 
@@ -702,7 +714,9 @@ export default function ReceiptView({
                 disabled={isPending && pendingPath === "/report"}
                 className="text-sm text-purple-600 hover:text-purple-800 font-medium"
               >
-                {isPending && pendingPath === "/report" ? navSpinner : "View Reports"}
+                {isPending && pendingPath === "/report"
+                  ? navSpinner
+                  : "View Reports"}
               </button>
               <span className="text-gray-400">•</span>
               <button
@@ -710,7 +724,9 @@ export default function ReceiptView({
                 disabled={isPending && pendingPath === "/pos"}
                 className="text-sm text-gray-600 hover:text-gray-800 font-medium"
               >
-                {isPending && pendingPath === "/pos" ? navSpinner : "Back to POS"}
+                {isPending && pendingPath === "/pos"
+                  ? navSpinner
+                  : "Back to POS"}
               </button>
             </div>
           </div>

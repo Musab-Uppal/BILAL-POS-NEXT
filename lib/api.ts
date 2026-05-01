@@ -1,7 +1,11 @@
 "use client";
 
 import { createClient } from "./supabase/client";
-import { normalizeReceiptItem, normalizeReceiptSnapshot } from "./receipt";
+import {
+  buildReceiptDateTime,
+  normalizeReceiptItem,
+  normalizeReceiptSnapshot,
+} from "./receipt";
 
 type ApiResponse<T> = { data: T };
 
@@ -730,7 +734,7 @@ export const apiPost = async (
         id: rpcData.receipt_id,
         order_id: rpcData.order_id,
         receipt_number: rpcData.receipt_number,
-        receipt_date: rpcData.receipt_date || new Date().toISOString(),
+        receipt_date: rpcData.receipt_date || buildReceiptDateTime(p_date),
         customer_name: rpcData.customer_name,
         previous_balance: toNumber(rpcData.previous_balance),
         current_bill_amount: toNumber(rpcData.current_bill_amount),
@@ -895,7 +899,7 @@ export const apiPost = async (
             this_bill_balance: p_balance_due,
             updated_balance: originalClientBalance + p_balance_due,
             receipt_number: receiptNumber,
-            receipt_date: new Date().toISOString(),
+            receipt_date: buildReceiptDateTime(p_date),
           })
           .select()
           .single();
@@ -956,7 +960,7 @@ export const apiPost = async (
         id: receipt.id,
         order_id: order.id,
         receipt_number: receiptNumber,
-        receipt_date: receipt.receipt_date || new Date().toISOString(),
+        receipt_date: receipt.receipt_date || buildReceiptDateTime(p_date),
         customer_name: client.name,
         previous_balance: originalClientBalance,
         current_bill_amount: p_total_amount,
@@ -995,7 +999,6 @@ export const apiPost = async (
       // ROLLBACK: Clean up any partial data so no orphan orders exist
       // ============================================================
 
-
       try {
         if (createdReceiptId) {
           await supabase
@@ -1018,10 +1021,7 @@ export const apiPost = async (
               .eq("id", p_customer);
           }
         }
-
-      } catch (rollbackErr: any) {
-
-      }
+      } catch (rollbackErr: any) {}
 
       const errorData =
         error && typeof error === "object"

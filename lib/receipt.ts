@@ -37,7 +37,10 @@ export const normalizeReceiptItem = (item: AnyRecord = {}) => {
 
   return {
     name:
-      item.name ?? item.product_name ?? item.product?.name ?? item.item?.name ??
+      item.name ??
+      item.product_name ??
+      item.product?.name ??
+      item.item?.name ??
       "Product",
     qty: quantity,
     factor,
@@ -51,7 +54,9 @@ export const normalizeReceiptItem = (item: AnyRecord = {}) => {
   };
 };
 
-export const normalizeReceiptSnapshot = (source: AnyRecord | null | undefined) => {
+export const normalizeReceiptSnapshot = (
+  source: AnyRecord | null | undefined,
+) => {
   const payload = source || {};
   const itemsSource = Array.isArray(payload.items)
     ? payload.items
@@ -69,10 +74,13 @@ export const normalizeReceiptSnapshot = (source: AnyRecord | null | undefined) =
   );
   const paymentMade = toNumber(payload.payment_made ?? payload.payment_amount);
   const thisBillBalance = toNumber(
-    payload.this_bill_balance ?? payload.balance_due ?? currentBillAmount - paymentMade,
+    payload.this_bill_balance ??
+      payload.balance_due ??
+      currentBillAmount - paymentMade,
   );
   const updatedBalance = toNumber(
-    payload.updated_balance ?? customerBalance + currentBillAmount - paymentMade,
+    payload.updated_balance ??
+      customerBalance + currentBillAmount - paymentMade,
   );
 
   return {
@@ -88,7 +96,10 @@ export const normalizeReceiptSnapshot = (source: AnyRecord | null | undefined) =
       payload.date ??
       new Date().toISOString(),
     customer_name:
-      payload.customer_name ?? payload.customer?.name ?? payload.customer ?? null,
+      payload.customer_name ??
+      payload.customer?.name ??
+      payload.customer ??
+      null,
     previous_balance: customerBalance,
     current_bill_amount: currentBillAmount,
     payment_made: paymentMade,
@@ -104,10 +115,14 @@ export const normalizeReceiptSnapshot = (source: AnyRecord | null | undefined) =
             payload.customer ??
             "Customer",
           balance: toNumber(
-            payload.customer.balance ?? payload.customer.starting_balance ?? customerBalance,
+            payload.customer.balance ??
+              payload.customer.starting_balance ??
+              customerBalance,
           ),
           starting_balance: toNumber(
-            payload.customer.starting_balance ?? payload.customer.balance ?? customerBalance,
+            payload.customer.starting_balance ??
+              payload.customer.balance ??
+              customerBalance,
           ),
         }
       : {
@@ -120,6 +135,41 @@ export const normalizeReceiptSnapshot = (source: AnyRecord | null | undefined) =
 };
 
 type ReceiptCartItem = AnyRecord;
+
+export const buildReceiptDateTime = (
+  orderDate?: string | null,
+  timeZone = "Asia/Karachi",
+) => {
+  if (typeof orderDate === "string" && orderDate.includes("T")) {
+    return orderDate;
+  }
+
+  const datePart = (orderDate || new Date().toISOString().split("T")[0]).slice(
+    0,
+    10,
+  );
+
+  try {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).formatToParts(now);
+    const getPart = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? "00";
+    const hour = getPart("hour");
+    const minute = getPart("minute");
+    const second = getPart("second");
+
+    return `${datePart}T${hour}:${minute}:${second}+05:00`;
+  } catch {
+    const timePart = new Date().toTimeString().split(" ")[0];
+    return `${datePart}T${timePart}`;
+  }
+};
 
 export const buildCheckoutReceiptSnapshot = ({
   items = [],
@@ -163,6 +213,7 @@ export const buildCheckoutReceiptSnapshot = ({
     current_bill_amount: total,
     createdAt,
     orderDate,
+    receipt_date: buildReceiptDateTime(orderDate || createdAt),
     customer: customer || {
       name: customerName || "Customer",
       balance: previousBalance,
@@ -196,12 +247,16 @@ export const buildReportReceiptSnapshot = ({
       name: item?.name || "Product",
       qty: parseFloat(item?.quantity) || 0,
       price_per_unit: parseFloat(item?.price) || 0,
-      lineTotal:
-        parseFloat(item?.total || item?.quantity * item?.price) || 0,
+      lineTotal: parseFloat(item?.total || item?.quantity * item?.price) || 0,
       productId: item?.id || Math.random().toString(36).substring(2, 11),
     })),
     total: parseFloat(order.total || order.amount) || 0,
-    createdAt: order.date || order.order_date || new Date().toISOString(),
+    createdAt:
+      order.receipt_date ||
+      order.date ||
+      order.order_date ||
+      new Date().toISOString(),
+    orderDate: order.receipt_date || order.order_date || order.date,
     customer: {
       name:
         order.customer_name || order.client?.name || customerName || "Customer",
@@ -217,11 +272,12 @@ export const buildReportReceiptSnapshot = ({
     orderId: order.id,
   });
 
-export const normalizeReceiptLookupResult = (result: AnyRecord | AnyRecord[] | null | undefined) => {
+export const normalizeReceiptLookupResult = (
+  result: AnyRecord | AnyRecord[] | null | undefined,
+) => {
   if (Array.isArray(result)) {
     return result[0] || null;
   }
 
   return result || null;
 };
-
