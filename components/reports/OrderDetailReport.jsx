@@ -50,7 +50,7 @@ export default function OrderDetailReport({
         month: "short",
         day: "numeric",
       });
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
   };
@@ -102,7 +102,7 @@ export default function OrderDetailReport({
         const receiptUrl = `/receipt?print=true&data=${encodedPayload}&orderId=${order.id}`;
         window.open(receiptUrl, "_blank", "noopener,noreferrer");
       }
-    } catch (error) {
+    } catch {
       try {
         const receiptPayload = buildReportReceiptSnapshot({
           order,
@@ -115,7 +115,7 @@ export default function OrderDetailReport({
         );
         const receiptUrl = `/receipt?print=true&data=${encodedPayload}&orderId=${order.id}`;
         window.open(receiptUrl, "_blank", "noopener,noreferrer");
-      } catch (fallbackError) {
+      } catch {
         alert("Failed to generate receipt. Please try again.");
       }
     } finally {

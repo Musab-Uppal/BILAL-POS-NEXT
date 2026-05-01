@@ -764,7 +764,7 @@ export const apiPost = async (
           receipt: receiptSnapshot,
         },
       };
-    } catch (rpcErr: any) {
+    } catch {
       // RPC failed, fall back to manual flow
     }
 
@@ -864,7 +864,7 @@ export const apiPost = async (
       try {
         const { data: rn } = await supabase.rpc("generate_receipt_number");
         if (rn) receiptNumber = rn;
-      } catch (e) {
+      } catch {
         // Fallback receipt number generation failed, use timestamp-based number
       }
 

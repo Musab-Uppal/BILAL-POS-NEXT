@@ -45,8 +45,8 @@ export default function ReceiptView({
         setLocationPayload(state?.payload || null);
         setBackendResponse(state?.response || null);
       }
-    } catch (e) {
-
+    } catch {
+      // Ignore
     } finally {
       window.sessionStorage.removeItem("receipt_navigation_state");
     }
@@ -68,16 +68,15 @@ export default function ReceiptView({
 
           // Increment reprint count
           await reprintReceipt(receiptId);
-        } catch (error) {
-
+        } catch {
           // Fallback to data in URL if available
           if (printData) {
             try {
               const decodedData = decodeURIComponent(atob(printData));
               const parsedData = JSON.parse(decodedData);
               setUrlData(parsedData);
-            } catch (e) {
-
+            } catch {
+              // Ignore
             }
           }
         } finally {
@@ -106,8 +105,8 @@ export default function ReceiptView({
         try {
           const response = await getReceipt(checkoutReceiptId);
           setUrlData(response.data);
-        } catch (error) {
-
+        } catch {
+          // Silent fail
         } finally {
           setLoading(false);
         }
