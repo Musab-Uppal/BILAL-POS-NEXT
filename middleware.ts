@@ -8,7 +8,6 @@ function getAdminIdentifiers() {
     process.env.USER1NAME,
     process.env.USER2NAME,
   ];
-  
 
   return Array.from(
     new Set(
@@ -65,9 +64,27 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const hasAuthCookies = request.cookies
+    .getAll()
+    .some((cookie) => /sb-|supabase|auth-token/i.test(cookie.name));
+
+  let user = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch (error) {
+    // If Supabase auth is temporarily unreachable, do not block the route.
+    // Keep the app usable for existing sessions instead of failing the page load.
+    console.warn("middleware auth check failed", error);
+
+    if (!hasAuthCookies && request.nextUrl.pathname !== "/login") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+
+    return response;
+  }
 
   const pathname = request.nextUrl.pathname;
   const isLoginRoute = pathname === "/login";
@@ -83,7 +100,11 @@ export async function middleware(request: NextRequest) {
     const isAdmin = isAdminUser(user, adminIdentifiers);
 
     if (!isAdmin) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.warn("middleware signOut failed", error);
+      }
 
       if (!isLoginRoute) {
         const url = request.nextUrl.clone();
