@@ -36,7 +36,7 @@ export default function ProductEditor({ id }: { id: string }) {
           }
         }
       } catch (err) {
-        console.error("Failed to load product", err);
+
         alert("Failed to load product");
         router.push("/pos");
       } finally {
@@ -98,7 +98,7 @@ export default function ProductEditor({ id }: { id: string }) {
 
       router.push("/pos");
     } catch (err) {
-      console.error("Failed to update price", err);
+
       alert("Failed to update price.");
     } finally {
       setSaving(false);

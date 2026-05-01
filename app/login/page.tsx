@@ -35,7 +35,7 @@ export default function LoginPage() {
         "Invalid username or password";
 
       if (status !== 401) {
-        console.error("Login failed", err);
+        // Unexpected login error
       }
 
       setError(message);

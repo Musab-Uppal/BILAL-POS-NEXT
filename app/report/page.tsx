@@ -62,7 +62,7 @@ export default function Report() {
         setCustomers(res.data);
       }
     } catch (err) {
-      console.error("Failed to fetch customers", err);
+
       if (err.response?.status === 401) {
         setAuthError(true);
         setError("Your session has expired. Please log in again.");
@@ -137,10 +137,7 @@ export default function Report() {
         params.append("customer", filters.selectedCustomer);
       }
 
-      console.log(
-        "📊 Fetching date range report with params:",
-        params.toString(),
-      );
+
       const res = await apiGet(`sales/orders/reports/date-range/?${params}`);
       if (res && res.data) {
         setReportData((prev) => ({ ...prev, range: res.data }));
@@ -153,7 +150,7 @@ export default function Report() {
   };
 
   const handleApiError = (err) => {
-    console.error("API Error:", err);
+
 
     if (err.response?.status === 401) {
       setAuthError(true);
